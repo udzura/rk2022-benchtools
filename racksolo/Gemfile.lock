@@ -1,0 +1,22 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    flamboyant (0.1.0.rc2)
+      rack
+      webrick
+    nio4r (2.5.8)
+    puma (5.6.4)
+      nio4r (~> 2.0)
+    rack (2.2.3.1)
+    webrick (1.7.0)
+
+PLATFORMS
+  arm64-darwin-21
+
+DEPENDENCIES
+  flamboyant
+  puma
+  webrick
+
+BUNDLED WITH
+   2.4.0.dev
