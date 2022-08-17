@@ -46,7 +46,17 @@ def usage
 end
 
 def stars(val, val_max, width)
-  DisplayHelper.stars(val, val_max, width)
+  i = 0
+  text = ""
+  while true
+    break if (i > (width * val.to_f / val_max) - 1) || (i > width - 1)
+    text += "*"
+    i += 1
+  end
+  if val > val_max
+    text = text[0...-1] + "+"
+  end
+  return text
 end
 
 def to_time(dur)
