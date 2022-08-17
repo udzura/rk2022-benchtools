@@ -67,16 +67,17 @@ def print_etime_hist(vals)
       val_max = 0
 
       vals.each do |i, v|
+        
         idx_max = i if i > idx_max
-        val_max = v if v > val_max
+        val_max = v if v && v > val_max
       end
 
       header = "     %-13s : count     distribution"
       body = "        %-10d : %-8d |%-*s|"
-      stars = stars_max
+      stars_max = 32
 
       if idx_max >= 0
-        puts(header % val_type);
+        puts(header % "time range");
       end
 
       (0...(idx_max + 1)).each do |i|
@@ -87,7 +88,7 @@ def print_etime_hist(vals)
         ]
         
         puts(body % [range, val, stars,
-                     stars(val, val_max, stars)])
+                     stars(val, val_max, stars_max)])
       end
     end
 
@@ -113,6 +114,6 @@ end
 
 puts "elapsed time histogram"
 puts "~~~~~~~~~~~~~~"
-# print_etime_hist(b["dist"])
+print_etime_hist(b["dist"])
 
-b["dist"].print_linear_hist
+#b["dist"].print_linear_hist
