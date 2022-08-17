@@ -6,7 +6,7 @@ BPF_HISTOGRAM(dist);
 BPF_HASH(start, u32);
 
 static u32 log10(u64 value) {
-  if (u64 == 0) { return 0; }
+  if (value == 0) { return 0; }
   u32 log = 0;
   for (int i = 0; i < 32; i++) {
     value = value / 10;
