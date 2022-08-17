@@ -1,3 +1,6 @@
+require 'rbbcc'
+include RbBCC
+
 prog = <<PROG
 int hola(void *ctx) {
   bpf_trace_printk("Hello, World!\\n");
@@ -18,7 +21,7 @@ end
 usage if ARGV.size != 1 && ARGV.size != 2
 
 path = ARGV[0]
-pid = ARGV[1]&.to_i
+pid = ARGV[1]&.to_i || -1
 
 b = BCC.new(text: prog)
 b.attach_uprobe(name: path, sym: "rb_str_new", fn_name: "hola", pid: pid)
@@ -26,6 +29,7 @@ b.attach_uretprobe(name: path, sym: "rb_str_new", fn_name: "hola2", pid: pid)
 
 loop do
   begin
+    b.trace_print
     sleep 1
   rescue Interrupt
     break # pass
