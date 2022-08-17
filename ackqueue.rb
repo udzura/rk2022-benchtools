@@ -3,13 +3,14 @@
 require 'rbbcc'
 include RbBCC
 
-prog = """
+prog = <<PROG
 #include <linux/sched.h>
 #include <net/sock.h>
 
 // define output data structure in C
 struct data_t {
     u32 backlog_len;
+    u32 max_backlog_len;
     u32 pid;
     u64 ts;
     char comm[TASK_COMM_LEN];
@@ -22,18 +23,21 @@ int kprobe__tcp_v4_conn_request(struct pt_regs *ctx, struct sock * arg0) {
     data.pid = bpf_get_current_pid_tgid();
     data.ts = bpf_ktime_get_ns();
 
-    if(data.ts % 999997 != 0) {
-        return 0;
-    }
+    //if(data.ts % 999997 != 0) {
+    //    return 0;
+    //}
 
     data.backlog_len = arg0->sk_ack_backlog;
+    data.max_backlog_len = arg0->sk_max_ack_backlog;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
     events.perf_submit(ctx, &data, sizeof(data));
 
     return 0;
 }
-"""
+PROG
+
+disp_interval = ARGV[0]&.to_i
 
 b = BCC.new(text: prog)
 # b.attach_kprobe(event: "tcp_v4_conn_request", fn_name: "hello")
@@ -43,6 +47,7 @@ puts("%-18s %-16s %-6s %s" % ["TIME(s)", "COMM", "PID", "BACKLOG_LEN"])
 
 # process event
 start = 0
+last_disp = nil
 print_event = lambda { |cpu, data, size|
   event = b["events"].event(data)
   if start == 0
@@ -51,8 +56,16 @@ print_event = lambda { |cpu, data, size|
 
   time_s = ((event.ts - start).to_f) / 1000000000
   # event.comm.pack("c*").sprit
-  puts("%-18.9f %-16s %-6d %d" % [time_s, event.comm, event.pid,
-                                  event.backlog_len])
+  if last_disp && (Time.now - last_disp) < disp_interval
+    return
+  end
+
+  puts("%-18.9f %-16s %-6d %d/%d" % [time_s, event.comm, event.pid,
+                                  event.backlog_len, event.max_backlog_len])
+
+  if disp_interval
+    last_disp = Time.now
+  end
 }
 
 # loop with callback to print_event
