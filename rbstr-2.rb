@@ -7,14 +7,20 @@ prog = <<PROG
 BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
+BPF_HASH(is_long, u32, u8);
 
 struct ruby_value_t {
   u64 flags;
   u64 klass;
-  char value[32]; //dummy
+  u64 len;
+  u64 ptr;
 };
 
-BPF_HASH(longstr, u64, struct ruby_value_t);
+struct ruby_string_t {
+  char str[32];
+};
+
+BPF_HASH(longstr, u64, struct ruby_string_t);
 
 static u32 log10(u64 value) {
   if (value == 0) { return 0; }
@@ -37,18 +43,17 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   u64 len = (u64)PT_REGS_PARM2(ctx);
   size.increment(bpf_log2l(len));
 
-  //if (len > 4095) {
-  //  struct longstr_t buf = {0};
-  //  bpf_probe_read_user(buf.value, 31, (char *)PT_REGS_PARM1(ctx));
-  //  u64 key = bpf_ktime_get_ns();
-  //  longstr.update(&key, &buf);
-  //}
+  if (len > 4095) {
+    u8 is = 1;
+    is_long.update(&tid, &is);
+  }
 
   return 0;
 }
 
 int rb_str_new_return(struct pt_regs *ctx) {
   u64 *tsp, delta;
+  u8 *is;
   u32 tid = bpf_get_current_pid_tgid();
 
   tsp = start.lookup(&tid);
@@ -58,10 +63,14 @@ int rb_str_new_return(struct pt_regs *ctx) {
 
     dist.increment(log10(delta));
 
-    struct ruby_value_t buf = {0};
-    bpf_probe_read_user(&buf, sizeof(buf), (struct ruby_value_t *)PT_REGS_RC(ctx));
-    u64 key = bpf_ktime_get_ns();
-    longstr.update(&key, &buf);
+    is = is_long.lookup(&tid);
+    if (is != 0) {
+      struct ruby_value_t value = {0};
+      struct ruby_string_t buf = {0};
+      bpf_probe_read_user(&value, sizeof(buf), (struct ruby_value_t *)PT_REGS_RC(ctx));
+      bpf_probe_read_user(&buf.str, 31, (char *)value.ptr);
+      u64 key = bpf_ktime_get_ns();
+      longstr.update(&key, &buf);
   }
   return 0;
 }
