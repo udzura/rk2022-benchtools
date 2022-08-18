@@ -8,11 +8,11 @@ BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
 
-struct longstr {
+struct longstr_t {
   char value[32];
-}
+};
 
-BPF_HASH(longstr, u64, *struct longstr);
+BPF_HASH(longstr, u64, struct longstr_t);
 
 static u32 log10(u64 value) {
   if (value == 0) { return 0; }
@@ -36,8 +36,8 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   size.increment(bpf_log2l(len));
 
   if (len > 4095) {
-    longstr buf = {0};
-    bpf_probe_read_user(&buf.value, sizeof(buf.value), (void *)PT_REGS_PARM1(ctx));
+    struct longstr_t buf = {0};
+    bpf_probe_read_user(buf.value, 31, (char *)PT_REGS_PARM1(ctx));
     u64 key = bpf_ktime_get_ns();
     longstr.update(&key, &buf);
   }
@@ -156,4 +156,4 @@ puts
 puts "detected long strings:"
 puts "~~~~~~~~~~~~~~"
 
-b["longstr"].each {|k, v| p "#{k}: #{v}..." }
+b["longstr"].each {|k, v| binding.irb; p "#{k[0, 8].unpack("L")[0]}: #{v[0, 32].unpack("z*")[0]}..." }
