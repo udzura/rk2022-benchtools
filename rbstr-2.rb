@@ -20,6 +20,7 @@ struct ruby_string_t {
   char str[32];
 };
 
+BPF_HASH(longlen, u64, u64);
 BPF_HASH(longstr, u64, struct ruby_string_t);
 
 static u32 log10(u64 value) {
@@ -43,7 +44,7 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   u64 len = (u64)PT_REGS_PARM2(ctx);
   size.increment(bpf_log2l(len));
 
-  if (len > 4095) {
+  if (len > 64) {
     u8 is = 1;
     is_long.update(&tid, &is);
   }
@@ -65,12 +66,15 @@ int rb_str_new_return(struct pt_regs *ctx) {
 
     is = is_long.lookup(&tid);
     if (is != 0) {
+      is_long.delete(&tid);
       struct ruby_value_t value = {0};
       struct ruby_string_t buf = {0};
       bpf_probe_read_user(&value, sizeof(buf), (struct ruby_value_t *)PT_REGS_RC(ctx));
       bpf_probe_read_user(&buf.str, 31, (char *)value.ptr);
       u64 key = bpf_ktime_get_ns();
+      longlen.update(&key, &value.len);
       longstr.update(&key, &buf);
+    }
   }
   return 0;
 }
@@ -172,4 +176,4 @@ puts
 puts "detected long strings:"
 puts "~~~~~~~~~~~~~~"
 
-b["longstr"].each {|k, v| binding.irb; p "#{k[0, 8].unpack("L")[0]}: #{v[0, 32].unpack("z*")[0]}..." }
+b["longstr"].each {|k, v| p "#{k[0, 8].unpack("L")[0]}: #{v[0, 32]}..." }
