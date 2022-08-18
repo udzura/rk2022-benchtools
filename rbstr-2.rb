@@ -7,6 +7,7 @@ prog = <<PROG
 BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
+BPF_HASH(longstr, u64, char[32]);
 
 static u32 log10(u64 value) {
   if (value == 0) { return 0; }
@@ -28,6 +29,14 @@ int rb_str_new_begin(struct pt_regs *ctx) {
 
   u64 len = (u64)PT_REGS_PARM2(ctx);
   size.increment(bpf_log2l(len));
+
+  if (len > 4095) {
+    char buf[32];
+    bpf_probe_read_user(&buf, sizeof(buf), (void *)PT_REGS_PARM1(ctx));
+    u64 key = bpf_ktime_get_ns();
+    longstr.update(&key, &buf);
+  }
+
   return 0;
 }
 
@@ -137,3 +146,9 @@ puts
 puts "created string size histogram"
 puts "~~~~~~~~~~~~~~"
 b["size"].print_log2_hist("bytes")
+
+puts
+puts "detected long strings:"
+puts "~~~~~~~~~~~~~~"
+
+b["longstr"].each {|k, v| p "#{k}: #{v}..." }
