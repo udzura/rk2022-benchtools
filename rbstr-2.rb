@@ -2,6 +2,8 @@ require 'rbbcc'
 include RbBCC
 
 prog = <<PROG
+#include <uapi/linux/ptrace.h>
+#
 BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
@@ -134,4 +136,4 @@ print_etime_hist(b["dist"])
 puts
 puts "created string size histogram"
 puts "~~~~~~~~~~~~~~"
-b["size"].print_linear_hist
+b["size"].print_log2_hist("bytes")
