@@ -8,11 +8,13 @@ BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
 
-struct longstr_t {
-  char value[32];
+struct ruby_value_t {
+  u64 flags;
+  u64 klass;
+  char value[32]; //dummy
 };
 
-BPF_HASH(longstr, u64, struct longstr_t);
+BPF_HASH(longstr, u64, struct ruby_value_t);
 
 static u32 log10(u64 value) {
   if (value == 0) { return 0; }
@@ -35,12 +37,12 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   u64 len = (u64)PT_REGS_PARM2(ctx);
   size.increment(bpf_log2l(len));
 
-  if (len > 4095) {
-    struct longstr_t buf = {0};
-    bpf_probe_read_user(buf.value, 31, (char *)PT_REGS_PARM1(ctx));
-    u64 key = bpf_ktime_get_ns();
-    longstr.update(&key, &buf);
-  }
+  //if (len > 4095) {
+  //  struct longstr_t buf = {0};
+  //  bpf_probe_read_user(buf.value, 31, (char *)PT_REGS_PARM1(ctx));
+  //  u64 key = bpf_ktime_get_ns();
+  //  longstr.update(&key, &buf);
+  //}
 
   return 0;
 }
@@ -55,6 +57,11 @@ int rb_str_new_return(struct pt_regs *ctx) {
     start.delete(&tid);
 
     dist.increment(log10(delta));
+
+    struct ruby_value_t buf = {0};
+    bpf_probe_read_user(&buf, sizeof(buf), (struct ruby_value_t *)PT_REGS_RC(ctx));
+    u64 key = bpf_ktime_get_ns();
+    longstr.update(&key, &buf);
   }
   return 0;
 }
