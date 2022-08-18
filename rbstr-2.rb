@@ -3,11 +3,16 @@ include RbBCC
 
 prog = <<PROG
 #include <uapi/linux/ptrace.h>
-#
+
 BPF_HISTOGRAM(dist);
 BPF_HISTOGRAM(size);
 BPF_HASH(start, u32);
-BPF_HASH(longstr, u64, char[32]);
+
+struct longstr {
+  char value[32];
+}
+
+BPF_HASH(longstr, u64, *struct longstr);
 
 static u32 log10(u64 value) {
   if (value == 0) { return 0; }
@@ -31,8 +36,8 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   size.increment(bpf_log2l(len));
 
   if (len > 4095) {
-    char buf[32];
-    bpf_probe_read_user(&buf, sizeof(buf), (void *)PT_REGS_PARM1(ctx));
+    longstr buf = {0};
+    bpf_probe_read_user(&buf.value, sizeof(buf.value), (void *)PT_REGS_PARM1(ctx));
     u64 key = bpf_ktime_get_ns();
     longstr.update(&key, &buf);
   }
