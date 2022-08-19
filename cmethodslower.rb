@@ -23,6 +23,7 @@ struct key_t {
 };
 // define output data structure in C
 struct data_t {
+  u32 delta;
   char klass [16];
   char symbol[16];
 };
@@ -55,6 +56,7 @@ int cmethod_return(struct pt_regs *ctx) {
 
     if (delta > 1000*1000) {
       struct data_t data = {0};
+      data.delta = delta;
       bpf_usdt_readarg_p(1, ctx, &data.klass,  16);
       bpf_usdt_readarg_p(2, ctx, &data.symbol, 16);
       
@@ -73,11 +75,12 @@ b = BCC.new(text: prog, usdt_contexts: [u])
 
 puts "Start tracing"
 
-puts "%25s %-8s %-8s" % %w(TIME CLASS METHOD)
+puts "%25s %8s %16s %16s" % %w(TIME ELAPSED CLASS METHOD)
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
-  puts "%25s %-8s %-8s" % [Time.now.to_s, event.klass, event.symbol]
+  delta = event.delta.to_f / (1000*1000)
+  puts "%25s %5.2f %8s %8s" % [Time.now.to_s, event.klass, event.symbol]
 end
 
 loop do
