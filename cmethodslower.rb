@@ -73,9 +73,11 @@ b = BCC.new(text: prog, usdt_contexts: [u])
 
 puts "Start tracing"
 
+puts "%25s %-8s %-8s" % %w(TIME CLASS METHOD)
+
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
-  binding.irb
+  puts "%25s %-8s %-8s" % [Time.now.to_s, event.klass, event.symbol]
 end
 
 loop do
