@@ -54,7 +54,7 @@ int cmethod_return(struct pt_regs *ctx) {
     delta = bpf_ktime_get_ns() - *tsp;
     start.delete(&key);
 
-    if (delta > 1000*1000) {
+    if (delta > 50*1000*1000) {
       struct data_t data = {0};
       data.delta = delta;
       bpf_usdt_readarg_p(1, ctx, &data.klass,  16);
@@ -75,12 +75,12 @@ b = BCC.new(text: prog, usdt_contexts: [u])
 
 puts "Start tracing"
 
-puts "%25s %8s %16s %16s" % %w(TIME ELAPSED CLASS METHOD)
+puts "%-25s %11s %16s %16s" % %w(TIME ELAPSED(ms) CLASS METHOD)
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
   delta = event.delta.to_f / (1000*1000)
-  puts "%25s %5.2f %8s %8s" % [Time.now.to_s, event.klass, event.symbol]
+  puts "%25s %11.2f %16s %16s" % [Time.now.to_s, delta, event.klass, event.symbol]
 end
 
 loop do
