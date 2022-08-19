@@ -62,7 +62,7 @@ PROG
 #     @lat2 = hist(nsecs - @call2[tid]) }
 #   END {clear(@call);clear(@call2)}' --usdt-file-activation
 
-u = USDT.new(pid: pid, path: path)
+u = USDT.new(pid: pid, path: binpath)
 u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
 u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
 #u.enable_probe(probe: "gc__sweep__begin", fn_name: "gc_sweep_begin")
