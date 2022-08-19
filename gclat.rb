@@ -3,13 +3,14 @@ require_relative 'time_helper'
 include RbBCC
 
 def usage
-  puts("USAGE: #{$0} [PID] [RUBY_PATH]")
+  puts("USAGE: #{$0} mark|sweep PID [RUBY_PATH]")
   exit()
 end
 
-pid = ARGV[0]&.to_i
-binpath = ARGV[1]
-if !pid and !binpath
+type = ARGB[0]
+pid = ARGV[1]&.to_i
+binpath = ARGV[2]
+if !type or !pid
   usage
 end
 
@@ -63,10 +64,13 @@ PROG
 #   END {clear(@call);clear(@call2)}' --usdt-file-activation
 
 u = USDT.new(pid: pid, path: binpath)
-u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
-u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
-#u.enable_probe(probe: "gc__sweep__begin", fn_name: "gc_sweep_begin")
-#u.enable_probe(probe: "gc__sweep__end", fn_name: "gc_sweep_end")
+if type == "mark"
+  u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
+  u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
+else
+  u.enable_probe(probe: "gc__sweep__begin", fn_name: "gc_event_begin")
+  u.enable_probe(probe: "gc__sweep__end", fn_name: "gc_event_end")
+end
 
 # initialize BPF
 b = BCC.new(text: prog, usdt_contexts: [u])
@@ -82,6 +86,6 @@ loop do
   end
 end
 
-puts "elapsed time of gc mark"
+puts "elapsed time of gc #{type}"
 puts "~~~~~~~~~~~~~~"
 print_etime_hist(b["dist"])
