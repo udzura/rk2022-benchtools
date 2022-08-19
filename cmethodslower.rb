@@ -13,6 +13,8 @@ if !pid
 end
 
 prog = <<PROG
+#include <uapi/linux/ptrace.h>
+
 // define key
 struct key_t {
   u32 tid;
@@ -25,42 +27,36 @@ struct data_t {
   char symbol[16];
 };
 BPF_PERF_OUTPUT(events);
-BPF_HASH(start, u32);
+BPF_HASH(start, struct key_t);
 
-int cmethod_entry(void *ctx) {
+int cmethod_entry(struct pt_regs *ctx) {
   u64 ts = bpf_ktime_get_ns();
-  u64 kaddr, symaddr;
   struct key_t key = {0};
   u32 tid = bpf_get_current_pid_tgid();
-  bpf_usdt_readarg(1, ctx, &kaddr);
-  bpf_probe_read_user_str(&key.klass,  16, (char *)kaddr);
-  bpf_usdt_readarg(2, ctx, &symaddr);
-  bpf_probe_read_user_str(&key.symbol, 16, (char *)symaddr);
+  bpf_usdt_readarg_p(1, ctx, &key.klass,  16);
+  bpf_usdt_readarg_p(2, ctx, &key.symbol, 16);
 
   start.update(&key, &ts);
   return 0;
 }
 
-int cmethod_return(void *ctx) {
-  u64 kaddr, symaddr;
+int cmethod_return(struct pt_regs *ctx) {
   struct key_t key = {0};
   u32 tid = bpf_get_current_pid_tgid();
-  bpf_usdt_readarg(1, ctx, &kaddr);
-  bpf_probe_read_user_str(&key.klass,  16, (char *)kaddr);
-  bpf_usdt_readarg(2, ctx, &symaddr);
-  bpf_probe_read_user_str(&key.symbol, 16, (char *)symaddr);
+  bpf_usdt_readarg_p(1, ctx, &key.klass,  16);
+  bpf_usdt_readarg_p(2, ctx, &key.symbol, 16);
 
   u64 *tsp, delta;
 
   tsp = start.lookup(&key);
   if (tsp != 0) {
     delta = bpf_ktime_get_ns() - *tsp;
-    start.delete(&tid);
+    start.delete(&key);
 
     if (delta > 1000*1000) {
       struct data_t data = {0};
-      bpf_probe_read_user_str(&data.klass,  16, (char *)kaddr);
-      bpf_probe_read_user_str(&data.symbol, 16, (char *)symaddr);
+      bpf_usdt_readarg_p(1, ctx, &data.klass,  16);
+      bpf_usdt_readarg_p(2, ctx, &data.symbol, 16);
       
       events.perf_submit(ctx, &data, sizeof(data));
     }
@@ -69,11 +65,13 @@ int cmethod_return(void *ctx) {
 }
 PROG
 
-u = USDT.new(pid: pid, path: path)
+u = USDT.new(pid: pid, path: binpath)
 u.enable_probe(probe: "cmethod__entry",  fn_name: "cmethod_entry")
 u.enable_probe(probe: "cmethod__return", fn_name: "cmethod_return")
 
 b = BCC.new(text: prog, usdt_contexts: [u])
+
+puts "Start tracing"
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
