@@ -16,6 +16,7 @@ end
 
 prog = <<PROG
 BPF_HISTOGRAM(dist);
+BPF_HISTOGRAM(dist2);
 BPF_HASH(start, u32);
 
 static u32 log10(u64 value) {
@@ -50,6 +51,28 @@ int gc_event_end(void *ctx) {
   }
   return 0;
 }
+
+int gc_event_begin2(void *ctx) {
+  u64 ts = bpf_ktime_get_ns();
+  u32 tid = bpf_get_current_pid_tgid();
+
+  start.update(&tid, &ts);
+  return 0;
+}
+
+int gc_event_end2(void *ctx) {
+  u64 *tsp, delta;
+  u32 tid = bpf_get_current_pid_tgid();
+
+  tsp = start.lookup(&tid);
+  if (tsp != 0) {
+    delta = bpf_ktime_get_ns() - *tsp;
+    start.delete(&tid);
+
+    dist2.increment(log10(delta));
+  }
+  return 0;
+}
 PROG
 
 # $ sudo bpftrace -e '
@@ -64,7 +87,12 @@ PROG
 #   END {clear(@call);clear(@call2)}' --usdt-file-activation
 
 u = USDT.new(pid: pid, path: binpath)
-if type == "mark"
+if type == "all"
+  u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
+  u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
+  u.enable_probe(probe: "gc__sweep__begin", fn_name: "gc_event_begin2")
+  u.enable_probe(probe: "gc__sweep__end", fn_name: "gc_event_end2")
+elsif type == "mark"
   u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
   u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
 else
@@ -86,6 +114,17 @@ loop do
   end
 end
 
-puts "elapsed time of gc #{type}"
-puts "~~~~~~~~~~~~~~"
-print_etime_hist(b["dist"])
+if type == "all"
+  puts "elapsed time of gc mark"
+  puts "~~~~~~~~~~~~~~"
+  print_etime_hist(b["dist"])
+
+  puts
+  puts "elapsed time of gc sweep"
+  puts "~~~~~~~~~~~~~~"
+  print_etime_hist(b["dist2"])
+else  
+  puts "elapsed time of gc #{type}"
+  puts "~~~~~~~~~~~~~~"
+  print_etime_hist(b["dist"])
+end
