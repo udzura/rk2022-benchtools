@@ -7,7 +7,7 @@ def usage
   exit()
 end
 
-type = ARGB[0]
+type = ARGV[0]
 pid = ARGV[1]&.to_i
 binpath = ARGV[2]
 if !type or !pid
