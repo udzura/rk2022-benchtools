@@ -21,6 +21,7 @@ struct data_t {
   u64 elapsed;
 };
 BPF_PERF_OUTPUT(events);
+BPF_ARRAY(sweeps, struct data_t);
 BPF_HASH(start, u32);
 BPF_HASH(start2, u32);
 
@@ -95,6 +96,8 @@ t = Thread.new do
     end
 
     sleep 1
+
+    b["sweeps"].to_a
   end
 end
 
