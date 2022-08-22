@@ -6,10 +6,9 @@ def usage
   exit()
 end
 
-type = ARGV[0]
-pid = ARGV[1]&.to_i
-binpath = ARGV[2]
-if !type or !pid
+pid = ARGV[0]&.to_i
+binpath = ARGV[1]
+if !pid
   usage
 end
 
@@ -20,7 +19,8 @@ prog = <<PROG
 struct data_t {
   u32 type; // 1: mark 2: sweep
   u64 elapsed;
-}
+};
+BPF_PERF_OUTPUT(events);
 BPF_HASH(start, u32);
 BPF_HASH(start2, u32);
 
@@ -78,6 +78,7 @@ u.enable_probe(probe: "gc__mark__begin", fn_name: "gc_event_begin")
 u.enable_probe(probe: "gc__mark__end", fn_name: "gc_event_end")
 u.enable_probe(probe: "gc__sweep__begin", fn_name: "gc_event_begin2")
 u.enable_probe(probe: "gc__sweep__end", fn_name: "gc_event_end2")
+b = BCC.new(text: prog, usdt_contexts: [u])
 
 puts "Start tracing"
 
@@ -99,9 +100,9 @@ end
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
-  elapsed = event.delta.to_f / (1000*1000)
+  elapsed = event.elapsed.to_f / (1000*1000)
   type = [nil, "mark", "sweep"][event.type]
-  puts "%26s %10s %11.2f %8s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "", delta, type]
+  puts "%26s %10s %11.2f %8s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "", elapsed, type]
 end
 
 loop do
