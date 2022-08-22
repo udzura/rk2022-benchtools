@@ -1,9 +1,9 @@
 require 'benchmark'
-require 'ruston'
+require_relative './ruston.so'
 
 # N = 100000
 # M = 10
-N = 10000
+N = 100000
 
 Benchmark.bmbm do |x|
   SIMPLE = %q({"Hello": "world", "lireral": true, "numeric": 1})
