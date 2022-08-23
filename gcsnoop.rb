@@ -41,7 +41,7 @@ int gc_event_end(void *ctx) {
     u64 *value = dist.lookup(&key);
     if (value) *value += delta;
     u64 *value2 = count.lookup(&key);
-    if (value2) *value += 1;
+    if (value2) *value2 += 1;
   }
   return 0;
 }
@@ -66,7 +66,7 @@ int gc_event_end2(void *ctx) {
     u64 *value = dist.lookup(&key);
     if (value) *value += delta;
     u64 *value2 = count.lookup(&key);
-    if (value2) *value += 1;
+    if (value2) *value2 += 1;
   }
   return 0;
 }
@@ -95,6 +95,7 @@ loop do
     sleep 1
 
     events = b["dist"][1]
+    binding.irb
     unless events.empty?
     end
   rescue Interrupt
