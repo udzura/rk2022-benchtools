@@ -96,11 +96,11 @@ loop do
 
     count, dist = *[b["count"][1], b["dist"][1]].map{ _1[0, 8].unpack("L")[0] }
     count2, dist2 = *[b["count"][2], b["dist"][2]].map{ _1[0, 8].unpack("L")[0] }
-    elap1 = count.zero? : '-' : "%7.3f" % (dist.to_f/count/1000/1000)
-    elap2 = count2.zero? : '-' : "%7.3f" % (dist2.to_f/count2/1000/1000)
+    elap1 = count.zero? ? '-' : ("%7.3f, %d time(s)" % [(dist.to_f/count/1000/1000), count])
+    elap2 = count2.zero? ? '-' : ("%7.3f, %d time(s)" % [(dist2.to_f/count2/1000/1000), count2])
     
-    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "MARK", "", elap1, count]
-    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "SWEEP", "", elap2, count2]
+    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "MARK", "", elap1]
+    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "SWEEP", "", elap2]
 
     b["count"][1] = 0
     b["count"][2] = 0
