@@ -81,23 +81,28 @@ b = BCC.new(text: prog, usdt_contexts: [u])
 
 puts "Start tracing"
 
-puts "%-26s %10s %11s %8s" % %w(TIME RSS(KB) ELAPSED(ms) EVENT)
+puts "%-26s %8s %10s %s" % %w(TIME EVENT RSS(KB) ELAPSED(ms/event))
 
 loop do
   begin
     begin
       rss = `cat /proc/#{pid}/smaps | grep Private`.lines.map{_1.split[1].to_i}.sum
-      puts "%26s %10d %11s %8s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), rss, "", ""]
+      puts "%26s %8s %10d" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "RSS", rss]
     rescue
       puts "[!] Failed to get RSS, skip. #{$!}"
     end
 
     sleep 1
 
-    events = b["dist"][1]
-    binding.irb
-    unless events.empty?
-    end
+    count, dist = *[b["count"][1], b["dist"][1]].map{ _1[0, 8].unpack("L")[0] }
+    count2, dist2 = *[b["count"][2], b["dist"][2]].map{ _1[0, 8].unpack("L")[0] }
+    b["count"][1] = 0
+    b["count"][2] = 0
+    b["dist"][1] = 0
+    b["dist"][2] = 0
+
+    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "MARK", (dist.to_f/count/1000/1000), "invoked #{count} times"]
+    puts "%-26s %8s %10s %s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "SWEEP", (dist2.to_f/count2/1000/1000), "invoked #{count} times"]
   rescue Interrupt
     exit()
   end
