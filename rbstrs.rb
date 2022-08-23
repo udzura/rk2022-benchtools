@@ -19,7 +19,7 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   //if (len > 64) {
   struct data_t data = {0};
   data.len = len;
-  bpf_probe_read_user_str(data.str, 32, ptr)
+  bpf_probe_read_user(data.str, 32, ptr);
   events.perf_submit(ctx, &data, sizeof(data));
 
   //}
@@ -43,7 +43,8 @@ b.attach_uprobe(name: path, sym: "rb_str_new", fn_name: "rb_str_new_begin", pid:
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
-  puts "String created:: #{data.str.inspect} (len=#{data.len})"
+  binding.irb
+  puts "String created:: #{event.str.inspect} (len=#{event.len})"
 end
 
 loop do
