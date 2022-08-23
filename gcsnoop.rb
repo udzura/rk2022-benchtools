@@ -15,13 +15,9 @@ end
 prog = <<PROG
 #include <uapi/linux/ptrace.h>
 
-// define key
-struct data_t {
-  u32 type; // 1: mark 2: sweep
-  u64 elapsed;
-};
-BPF_PERF_OUTPUT(events);
-BPF_ARRAY(sweeps, struct data_t);
+// key = 1: mark 2: sweep
+BPF_ARRAY(dist, u64, 3);
+BPF_ARRAY(count, u64, 3);
 BPF_HASH(start, u32);
 BPF_HASH(start2, u32);
 
@@ -36,15 +32,16 @@ int gc_event_begin(void *ctx) {
 int gc_event_end(void *ctx) {
   u64 *tsp, delta;
   u32 tid = bpf_get_current_pid_tgid();
+  u32 key = 1;
 
   tsp = start.lookup(&tid);
   if (tsp != 0) {
-    struct data_t data = {0};
     delta = bpf_ktime_get_ns() - *tsp;
-    data.type = 1;
-    data.elapsed = delta;
     start.delete(&tid);
-    events.perf_submit(ctx, &data, sizeof(data));
+    u64 *value = dist.lookup(&key);
+    if (value) *value += delta;
+    u64 *value2 = count.lookup(&key);
+    if (value2) *value += 1;
   }
   return 0;
 }
@@ -60,15 +57,16 @@ int gc_event_begin2(void *ctx) {
 int gc_event_end2(void *ctx) {
   u64 *tsp, delta;
   u32 tid = bpf_get_current_pid_tgid();
+  u32 key = 2;
 
   tsp = start2.lookup(&tid);
   if (tsp != 0) {
-    struct data_t data = {0};
     delta = bpf_ktime_get_ns() - *tsp;
-    data.type = 2;
-    data.elapsed = delta;
     start2.delete(&tid);
-    events.perf_submit(ctx, &data, sizeof(data));
+    u64 *value = dist.lookup(&key);
+    if (value) *value += delta;
+    u64 *value2 = count.lookup(&key);
+    if (value2) *value += 1;
   }
   return 0;
 }
@@ -85,9 +83,8 @@ puts "Start tracing"
 
 puts "%-26s %10s %11s %8s" % %w(TIME RSS(KB) ELAPSED(ms) EVENT)
 
-do_loop = true
-t = Thread.new do
-  while do_loop
+loop do
+  begin
     begin
       rss = `cat /proc/#{pid}/smaps | grep Private`.lines.map{_1.split[1].to_i}.sum
       puts "%26s %10d %11s %8s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), rss, "", ""]
@@ -97,23 +94,10 @@ t = Thread.new do
 
     sleep 1
 
-    b["sweeps"].to_a
-  end
-end
-
-b["events"].open_perf_buffer do |_cpu, data, _size|
-  event = b["events"].event(data)
-  elapsed = event.elapsed.to_f / (1000*1000)
-  type = [nil, "mark", "sweep"][event.type]
-  puts "%26s %10s %11.2f %8s" % [Time.now.strftime("%Y-%m-%d %H:%M:%S.%6N"), "", elapsed, type]
-end
-
-loop do
-  begin
-    b.perf_buffer_poll()
+    events = b["dist"][1]
+    unless events.empty?
+    end
   rescue Interrupt
-    do_loop = false
-    t.join
     exit()
   end
 end
