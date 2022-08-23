@@ -19,7 +19,7 @@ int rb_str_new_begin(struct pt_regs *ctx) {
   //if (len > 64) {
   struct data_t data = {0};
   data.len = len;
-  bpf_probe_read_user(data.str, len, ptr);
+  bpf_probe_read_user(data.str, sizeof(ptr), ptr);
   events.perf_submit(ctx, &data, sizeof(data));
 
   //}
@@ -39,14 +39,14 @@ path = ARGV[0]
 pid = ARGV[1]&.to_i || -1
 
 b = BCC.new(text: prog)
-# TODO: id pid specifyed, no data returns...
 b.attach_uprobe(name: path, sym: "rb_str_new", fn_name: "rb_str_new_begin", pid: pid)
 
 puts "Snooping ruby str..."
 
 b["events"].open_perf_buffer do |_cpu, data, _size|
   event = b["events"].event(data)
-  puts "String created:: #{event.str.inspect} (len=#{event.len})"
+  showlen = [event.len, 32].min
+  puts "String created:: #{event.str[0, showlen].inspect} (len=#{event.len})"
 end
 
 loop do
