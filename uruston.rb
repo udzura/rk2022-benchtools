@@ -61,6 +61,8 @@ prog = [
   funcs[2],
 ].join("\n")
 
+puts prog
+
 def usage
   puts("USAGE: #{$0} [GEM_SO_PATH] [PID]")
   exit()
@@ -80,12 +82,12 @@ if sym = ENV['SYMNAME0']
 end
 if sym = ENV['SYMNAME1']
   b.attach_uprobe(name: path, sym: sym, fn_name: "on_begin1", pid: pid)
-  b.attach_uretprobe(name: path, sym: sym, fn_name: "on_return0", pid: pid)
+  b.attach_uretprobe(name: path, sym: sym, fn_name: "on_return1", pid: pid)
   syms[1] = sym
 end
 if sym = ENV['SYMNAME2']
   b.attach_uprobe(name: path, sym: sym, fn_name: "on_begin2", pid: pid)
-  b.attach_uretprobe(name: path, sym: sym, fn_name: "on_return0", pid: pid)
+  b.attach_uretprobe(name: path, sym: sym, fn_name: "on_return2", pid: pid)
   syms[2] = sym
 end
 
@@ -104,8 +106,8 @@ puts "Call stats:"
 calls = b.get_table("calls").to_a
 elap  = b.get_table("elap").to_a
 
-puts "%8s %8s %10s" % %w(SYM COUNT ALL(ms) ELAP(ms/i))
+puts "%8s %8s %10s %10s" % %w(SYM COUNT ALL(ms) ELAP(ms/i))
 calls.each_with_index do |v, i|
   elapav = elap[i].to_f / v / 1000 / 1000
-  puts "%8s %8d %10.4f" % [syms[i], v, elap[i].to_f / 1000 / 1000 ,elapav]
+  puts "%8s %8d %10.4f %10.4f" % [syms[i], v, elap[i].to_f / 1000 / 1000 ,elapav]
 end
