@@ -61,7 +61,7 @@ prog = [
   funcs[2],
 ].join("\n")
 
-puts prog
+# puts prog
 
 def usage
   puts("USAGE: #{$0} [GEM_SO_PATH] [PID]")
@@ -106,9 +106,9 @@ puts "Call stats:"
 calls = b.get_table("calls").to_a
 elap  = b.get_table("elap").to_a
 
-puts "%32s %8s %10s %10s" % %w(SYM COUNT ALL(ms) ELAP(ms/i))
+puts "%60s %8s %10s %10s" % %w(SYM COUNT ALL(ms) ELAP(ms/i))
 calls.each_with_index do |v, i|
   elapav = elap[i].to_f / v / 1000 / 1000
   sym = `echo #{syms[i]} | c++filt`.chomp
-  puts "%32s %8d %10.4f %10.4f" % [sym, v, elap[i].to_f / 1000 / 1000 ,elapav]
+  puts "%60s %8d %10.4f %10.4f" % [sym, v, elap[i].to_f / 1000 / 1000 ,elapav]
 end
