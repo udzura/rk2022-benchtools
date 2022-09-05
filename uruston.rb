@@ -104,8 +104,8 @@ puts "Call stats:"
 calls = b.get_table("calls").to_a
 elap  = b.get_table("elap").to_a
 
-puts "%8s %8s %10s" % %w(SYM COUNT ELAP(ms/i))
+puts "%8s %8s %10s" % %w(SYM COUNT ALL(ms) ELAP(ms/i))
 calls.each_with_index do |v, i|
   elapav = elap[i].to_f / v / 1000 / 1000
-  puts "%8s %8d %10.2f" % [syms[i], v, elapav]
+  puts "%8s %8d %10.4f" % [syms[i], v, elap[i].to_f / 1000 / 1000 ,elapav]
 end
