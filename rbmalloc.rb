@@ -9,12 +9,10 @@ pid = ARGV[0].to_i
 
 b = BCC.new(text: <<CLANG)
 #include <uapi/linux/ptrace.h>
-BPF_ARRAY(calls, long, 4);
-static int imalloc = 0;
-static int icalloc = 1;
-static int ifree   = 2;
+BPF_ARRAY(calls, u64, 4);
 
 int malloc_enter(struct pt_regs *ctx, size_t size) {
+    int imalloc = 0;
     u64 zero = 0, *val;
     val = calls.lookup_or_init(&imalloc, &zero);
     if (val)
@@ -23,6 +21,7 @@ int malloc_enter(struct pt_regs *ctx, size_t size) {
 };
 
 int calloc_enter(struct pt_regs *ctx, size_t size) {
+    int icalloc = 1;
     u64 zero = 0, *val;
     val = calls.lookup_or_init(&icalloc, &zero);
     if (val)
@@ -31,6 +30,7 @@ int calloc_enter(struct pt_regs *ctx, size_t size) {
 };
 
 int free_enter(struct pt_regs *ctx, size_t size) {
+    int ifree   = 2;
     u64 zero = 0, *val;
     val = calls.lookup_or_init(&ifree, &zero);
     if (val)
@@ -53,6 +53,9 @@ loop do
 end
 
 calls = b.get_table("calls")
-calls.each do |v|
-  binding.irb
+callee = %w(malloc calloc free unknown)
+
+puts "Call stats:"
+calls.each_with_index do |v, i|
+  puts "%8s %d" % [callee[i], v]
 end
