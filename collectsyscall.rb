@@ -159,14 +159,22 @@ end
 info_by_pids = {}
 comms = {}
 store = b.get_table("store")
-store.items.each do |k, v|
+items = store.items.map do |k, v|
+  [k, v[0, 40].unpack("Q Q Q Z16")]
+end.to_h
+
+elapsed_all_ns = items.values.map{|v| v[2]}.sum.to_f
+
+items.each do |k, v|
   #require 'pry'; binding.pry
-  count, elapsed_ns, _dummy, comm = v[0, 40].unpack("Q Q Q Z16")
+  count, elapsed_ns, _dummy, comm = v
   info_by_pids[k.pid] ||= {}
   info_by_pids[k.pid][k.syscall_nr] = {
     name: to_name(k.syscall_nr),
     count: count,
-    elapsed_ms: elapsed_ns / 1000000.0
+    elapsed_perc: (elapsed_ns / elapsed_all_ns) * 100.0,
+    elapsed_us_per_call: (elapsed_ns / 1000.0 / count).floor.to_i,
+    elapsed_s: elapsed_ns / 100000000.0
   }
   comms[k.pid] ||= comm
 end
@@ -174,9 +182,10 @@ end
 pids = info_by_pids.keys.sort
 pids.each do |pid|
   puts "PID=#{pid}(maybe: #{comms[pid]}) --->"
+  puts "\t%6s %9s %9s %7s %22s" % %w(TIME% SECONDS US/CALL CALLS SYSCALL)
   i = info_by_pids[pid]
-  i.to_a.sort_by {|k, v| [-v[:count], -v[:elapsed_ms]] }.each do |nr, record|
-    puts "\t%<name>-22s %<count>7d %<elapsed_ms>10.3f ms" % record
+  i.to_a.sort_by {|k, v| [-v[:count], -v[:elapsed_us]] }.each do |nr, record|
+    puts "\t%<elapsed_perc>6.2f %<elapsed_s>9.6f %<elapsed_us_per_call>9d %<count>7d %<name>22s" % record
   end
   puts
 end
