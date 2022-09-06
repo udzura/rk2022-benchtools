@@ -163,7 +163,7 @@ items = store.items.map do |k, v|
   [k, v[0, 40].unpack("Q Q Q Z16")]
 end.to_h
 
-elapsed_all_ns = items.values.map{|v| v[2]}.sum.to_f
+elapsed_all_ns = items.values.map{|v| v[1]}.sum.to_f
 
 items.each do |k, v|
   #require 'pry'; binding.pry
@@ -184,7 +184,7 @@ pids.each do |pid|
   puts "PID=#{pid}(maybe: #{comms[pid]}) --->"
   puts "\t%6s %9s %9s %7s %22s" % %w(TIME% SECONDS US/CALL CALLS SYSCALL)
   i = info_by_pids[pid]
-  i.to_a.sort_by {|k, v| [-v[:count], -v[:elapsed_us]] }.each do |nr, record|
+  i.to_a.sort_by {|k, v| [-v[:elapsed_perc], -v[:elapsed_us_per_call]] }.each do |nr, record|
     puts "\t%<elapsed_perc>6.2f %<elapsed_s>9.6f %<elapsed_us_per_call>9d %<count>7d %<name>22s" % record
   end
   puts
