@@ -174,7 +174,7 @@ items.each do |k, v|
     count: count,
     elapsed_perc: (elapsed_ns / elapsed_all_ns) * 100.0,
     elapsed_us_per_call: (elapsed_ns / 1000.0 / count).floor.to_i,
-    elapsed_s: elapsed_ns / 100000000.0
+    elapsed_s: elapsed_ns / 1000000000.0
   }
   comms[k.pid] ||= comm
 end
