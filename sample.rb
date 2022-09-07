@@ -11,7 +11,7 @@ int func(void *ctx) {
 CLANG
 
 b = BCC.new(text: code)
-b.attach_kprobe(event: b.get_syscall_fnname("execve"), fn_name: "func")
+b.attach_kprobe(event: "__arm64_sys_execve", fn_name: "func")
 loop do
   sleep 3;
   puts "#{Time.now} execve count in 3s: #{b['dist'].to_a[0]}"
