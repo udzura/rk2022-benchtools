@@ -16,11 +16,6 @@ int kprobe__tcp_v4_conn_request(struct pt_regs *ctx, struct sock * arg0) {
 
     data.pid = bpf_get_current_pid_tgid();
     data.ts = bpf_ktime_get_ns();
-
-    //if(data.ts % 999997 != 0) {
-    //    return 0;
-    //}
-
     data.backlog_len = arg0->sk_ack_backlog;
     data.max_backlog_len = arg0->sk_max_ack_backlog;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
